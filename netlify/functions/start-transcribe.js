@@ -9,6 +9,7 @@ function getCreds() {
   let privateKey = c.private_key;
   if (privateKey) {
     privateKey = privateKey.replace(/\\n/g, '\n');
+    // Aseguramos formato PEM correcto
     if (!privateKey.includes('-----BEGIN PRIVATE KEY-----\n')) {
         privateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
     }
@@ -46,18 +47,40 @@ exports.handler = async (event) => {
   try {
     const { gcsUri, languageCode, model } = JSON.parse(event.body);
 
+    const extension = gcsUri.split('.').pop().toLowerCase();
+    
+    // Configuración dinámica
+    let encoding = 'MP3'; // Default más seguro
+    let sampleRateHertz = undefined; // ¡IMPORTANTE! Dejar indefinido para que Google detecte el audio
+
+    if (extension === 'wav') {
+      encoding = 'LINEAR16';
+    } else if (extension === 'flac') {
+      encoding = 'FLAC';
+    } else if (extension === 'ogg' || extension === 'opus') {
+      encoding = 'OGG_OPUS';
+    } else if (extension === 'amr') {
+      encoding = 'AMR';
+      sampleRateHertz = 8000; // AMR sí requiere 8000 obligatorio
+    } 
+    // Para MP3 y AAC (que convertiremos a MP3 mentalmente), no ponemos sampleRateHertz
+
     const request = {
       config: {
         languageCode: languageCode || 'es-MX',
         model: model || 'latest_long',
         enableAutomaticPunctuation: true,
         enableWordTimeOffsets: true,
-        // Google Cloud Speech V2 detecta encoding automáticamente para formatos comunes
+        encoding: encoding,
       },
       audio: { uri: gcsUri },
     };
 
-    // Usar longRunningRecognize para soportar archivos grandes
+    // Solo agregamos la frecuencia si es estrictamente necesaria (ej. AMR)
+    if (sampleRateHertz) {
+        request.config.sampleRateHertz = sampleRateHertz;
+    }
+
     const [operation] = await client.longRunningRecognize(request);
 
     return {
