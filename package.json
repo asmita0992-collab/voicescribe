@@ -1,4 +1,8 @@
 {
-  "name": "voicescribe-functions",
-  "version": "1.0.0"
+  "name": "voice-scribe-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "@google-cloud/speech": "^6.0.0",
+    "@google-cloud/storage": "^7.0.0"
+  }
 }
