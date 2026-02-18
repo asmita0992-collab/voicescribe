@@ -5,10 +5,22 @@ function getCreds() {
     throw new Error('Falta la variable GOOGLE_CREDENTIALS en Netlify');
   }
   const c = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  
+  let privateKey = c.private_key;
+  if (privateKey) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+    if (!privateKey.includes('-----BEGIN PRIVATE KEY-----\n')) {
+        privateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
+    }
+    if (!privateKey.includes('\n-----END PRIVATE KEY-----')) {
+        privateKey = privateKey.replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
+    }
+  }
+
   return {
     credentials: {
       client_email: c.client_email,
-      private_key: c.private_key.split(String.raw`\n`).join('\n').replace(/\\n/g, '\n')
+      private_key: privateKey
     },
     projectId: c.project_id
   };
