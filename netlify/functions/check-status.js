@@ -1,5 +1,6 @@
 const speech = require('@google-cloud/speech');
 
+// Función "blindada" para leer credenciales (igual que en los otros archivos)
 function getCreds() {
   if (!process.env.GOOGLE_CREDENTIALS) {
     throw new Error('Falta la variable GOOGLE_CREDENTIALS en Netlify');
@@ -8,7 +9,10 @@ function getCreds() {
   
   let privateKey = c.private_key;
   if (privateKey) {
+    // 1. Reemplazar saltos de línea literales por reales
     privateKey = privateKey.replace(/\\n/g, '\n');
+    
+    // 2. Asegurar que los encabezados tengan sus propios renglones
     if (!privateKey.includes('-----BEGIN PRIVATE KEY-----\n')) {
         privateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
     }
@@ -29,6 +33,7 @@ function getCreds() {
 const client = new speech.SpeechClient(getCreds());
 
 exports.handler = async (event) => {
+  // Headers CORS obligatorios
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -45,9 +50,12 @@ exports.handler = async (event) => {
 
   try {
     const { operationName } = JSON.parse(event.body);
+    
+    // Consultar a Google por el estado de la operación
     const [operation] = await client.checkLongRunningRecognizeProgress(operationName);
 
     if (operation.done) {
+      // Si terminó, obtenemos el resultado final
       const [response] = await operation.promise();
       
       let fullText = "";
@@ -69,24 +77,3 @@ exports.handler = async (event) => {
 
       return {
         statusCode: 200,
-        headers,
-        body: JSON.stringify({ 
-            status: 'DONE', 
-            text: fullText, 
-            confidence: count > 0 ? totalConf / count : 0,
-            words: words 
-        }),
-      };
-    }
-
-    return { statusCode: 200, headers, body: JSON.stringify({ status: 'PROCESSING' }) };
-    
-  } catch (error) {
-    console.error("Error en check-status:", error);
-    return { 
-      statusCode: 500, 
-      headers,
-      body: JSON.stringify({ error: error.message }) 
-    };
-  }
-};
