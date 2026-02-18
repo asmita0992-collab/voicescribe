@@ -9,7 +9,6 @@ function getCreds() {
   let privateKey = c.private_key;
   if (privateKey) {
     privateKey = privateKey.replace(/\\n/g, '\n');
-    // Aseguramos formato PEM correcto
     if (!privateKey.includes('-----BEGIN PRIVATE KEY-----\n')) {
         privateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
     }
@@ -47,13 +46,17 @@ exports.handler = async (event) => {
   try {
     const { gcsUri, languageCode, model } = JSON.parse(event.body);
 
+    // 1. Detectar extensión del archivo desde la URI
     const extension = gcsUri.split('.').pop().toLowerCase();
     
-    // Configuración dinámica
-    let encoding = 'MP3'; // Default más seguro
-    let sampleRateHertz = undefined; // ¡IMPORTANTE! Dejar indefinido para que Google detecte el audio
+    // 2. Configurar Encoding según el archivo
+    let encoding = 'ENCODING_UNSPECIFIED';
+    let sampleRateHertz = undefined; // Dejar undefined a menos que sea obligatorio
 
-    if (extension === 'wav') {
+    if (extension === 'mp3') {
+      encoding = 'MP3';
+      sampleRateHertz = 16000; // MP3 suele requerir especificar una tasa, 16000 o 44100 son comunes
+    } else if (extension === 'wav') {
       encoding = 'LINEAR16';
     } else if (extension === 'flac') {
       encoding = 'FLAC';
@@ -61,9 +64,11 @@ exports.handler = async (event) => {
       encoding = 'OGG_OPUS';
     } else if (extension === 'amr') {
       encoding = 'AMR';
-      sampleRateHertz = 8000; // AMR sí requiere 8000 obligatorio
-    } 
-    // Para MP3 y AAC (que convertiremos a MP3 mentalmente), no ponemos sampleRateHertz
+      sampleRateHertz = 8000;
+    } else {
+        // Fallback para otros formatos
+        encoding = 'MP3'; 
+    }
 
     const request = {
       config: {
@@ -76,11 +81,12 @@ exports.handler = async (event) => {
       audio: { uri: gcsUri },
     };
 
-    // Solo agregamos la frecuencia si es estrictamente necesaria (ej. AMR)
+    // Agregar sampleRate solo si lo definimos (ayuda a evitar conflictos)
     if (sampleRateHertz) {
         request.config.sampleRateHertz = sampleRateHertz;
     }
 
+    // Usar longRunningRecognize para soportar archivos grandes
     const [operation] = await client.longRunningRecognize(request);
 
     return {
