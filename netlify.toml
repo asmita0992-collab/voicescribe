@@ -1,7 +1,0 @@
-[build]
-  publish = "public"
-  functions = "netlify/functions"
-
-[functions]
-  node_bundler = "zisi"
-  external_node_modules = ["@google-cloud/speech", "@google-cloud/storage"]
