@@ -1,6 +1,6 @@
 const speech = require('@google-cloud/speech');
 
-// Función BLINDADA para leer credenciales (Asegúrate de tener esta versión exacta)
+// Función BLINDADA para leer credenciales (Igual que en tus otros archivos)
 function getCreds() {
   if (!process.env.GOOGLE_CREDENTIALS) {
     throw new Error('Falta la variable GOOGLE_CREDENTIALS en Netlify');
@@ -9,7 +9,10 @@ function getCreds() {
   
   let privateKey = c.private_key;
   if (privateKey) {
+    // 1. Reemplazar saltos de línea literales por reales
     privateKey = privateKey.replace(/\\n/g, '\n');
+    
+    // 2. Asegurar que los encabezados tengan sus propios renglones
     if (!privateKey.includes('-----BEGIN PRIVATE KEY-----\n')) {
         privateKey = privateKey.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n');
     }
@@ -42,7 +45,7 @@ exports.handler = async (event) => {
   try {
     const { operationName } = JSON.parse(event.body);
     
-    // Verificamos el progreso
+    // Consultar a Google
     const [operation] = await client.checkLongRunningRecognizeProgress(operationName);
 
     if (operation.done) {
@@ -84,7 +87,6 @@ exports.handler = async (event) => {
     return { 
       statusCode: 500, 
       headers,
-      // Esto enviará el error real al frontend
       body: JSON.stringify({ error: error.message }) 
     };
   }
