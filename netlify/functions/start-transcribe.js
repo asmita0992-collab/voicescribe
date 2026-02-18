@@ -40,12 +40,10 @@ exports.handler = async (event) => {
         model: model || 'latest_long',
         enableAutomaticPunctuation: true,
         enableWordTimeOffsets: true,
-        // Al no especificar encoding, Google V2 lo detecta automáticamente (WAV/FLAC/MP3)
       },
       audio: { uri: gcsUri },
     };
 
-    // Usamos longRunningRecognize para soportar archivos largos
     const [operation] = await client.longRunningRecognize(request);
 
     return {
